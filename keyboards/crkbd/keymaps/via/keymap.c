@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stdint.h>
 #include "action_util.h"
 #include QMK_KEYBOARD_H
 #include "rgblight.h"
@@ -100,15 +101,31 @@ bool led_update_user(led_t led_state) {
     return true;
 }
 
+static uint8_t num_mod_keys_activated = 0;
+
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (IS_QK_MOD_TAP(keycode)) {
-        // enable layer if held down (tap count is zero) and was pressed
-        if (record->tap.count == 0 && record->event.pressed) {
-            rgblight_set_layer_state(3, true);
+        if (record->tap.count == 0) {
+            if (record->event.pressed) {
+                // enable layer if held down (tap count is zero) and was pressed
+                num_mod_keys_activated++;
+            } else {
+                // a mod key was released.
+                if (num_mod_keys_activated != 0) {
+                    // don't allow underflow.
+                    num_mod_keys_activated--;
+                }
+            }
         } else {
             // if tapped or just released, disable the layer
-            rgblight_set_layer_state(3, false);
+            // rgblight_set_layer_state(3, false);
         }
+    }
+
+    if (num_mod_keys_activated > 0) {
+        rgblight_set_layer_state(3, true);
+    } else {
+        rgblight_set_layer_state(3, false);
     }
 
     return true;
